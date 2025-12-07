@@ -1,0 +1,68 @@
+---
+# Clang-format configuration
+BasedOnStyle: LLVM
+
+# Braces on same line (attach) except for scoping
+BreakBeforeBraces: Custom
+BraceWrapping:
+  AfterClass: false
+  AfterControlStatement: Never
+  AfterEnum: false
+  AfterFunction: false
+  AfterNamespace: false
+  AfterStruct: false
+  AfterUnion: false
+  AfterExternBlock: false
+  BeforeCatch: false
+  BeforeElse: false
+  BeforeLambdaBody: false
+  BeforeWhile: false
+  SplitEmptyFunction: false
+  SplitEmptyRecord: false
+  SplitEmptyNamespace: false
+
+# Spaces, not tabs
+UseTab: Never
+TabWidth: 4
+IndentWidth: 4
+
+# AccessModifierOffset: -2
+IndentAccessModifiers: true
+
+# Indent case labels from switch
+IndentCaseLabels: true
+
+# Don't indent namespace contents
+NamespaceIndentation: None
+
+# Constructor initializer list formatting
+BreakConstructorInitializers: AfterColon
+ConstructorInitializerIndentWidth: 4
+
+# Preserve multiline macros with minimal spacing
+AlignEscapedNewlines: Left
+
+# Qt macros
+StatementMacros: ['Q_OBJECT', 'Q_GADGET', 'Q_NAMESPACE']
+
+# Compact spacing - no space before parens
+SpaceBeforeParens: Never
+SpaceInEmptyParentheses: false
+SpacesInParentheses: false
+SpacesInSquareBrackets: false
+SpaceAfterCStyleCast: false
+SpaceBeforeAssignmentOperators: true
+
+# Other formatting preferences
+ColumnLimit: 100
+AlignAfterOpenBracket: Align
+AlignConsecutiveAssignments: None
+AlignConsecutiveDeclarations: Consecutive
+AlignOperands: Align
+AllowShortFunctionsOnASingleLine: Empty
+AllowShortIfStatementsOnASingleLine: WithoutElse
+AllowShortLoopsOnASingleLine: false
+AllowShortBlocksOnASingleLine: Never
+AlwaysBreakAfterReturnType: None
+PointerAlignment: Right
+

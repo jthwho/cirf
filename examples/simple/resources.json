@@ -1,0 +1,30 @@
+{
+    "metadata": {
+        "app": "simple_example",
+        "version": "1.0.0"
+    },
+    "entries": [
+        {
+            "type": "file",
+            "path": "hello.txt",
+            "source": "./resources/hello.txt",
+            "metadata": {
+                "description": "A simple greeting"
+            }
+        },
+        {
+            "type": "folder",
+            "path": "config",
+            "metadata": {
+                "category": "configuration"
+            },
+            "entries": [
+                {
+                    "type": "file",
+                    "path": "data.json",
+                    "source": "./resources/data.json"
+                }
+            ]
+        }
+    ]
+}

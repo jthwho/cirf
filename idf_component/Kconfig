@@ -1,0 +1,26 @@
+menu "CIRF Runtime Configuration"
+
+    config CIRF_MAX_PATH
+        int "Maximum path length for lookups"
+        default 256
+        range 64 1024
+        help
+            Maximum path length for cirf_find_file() and cirf_find_folder().
+            Uses stack allocation. Reduce for memory-constrained devices.
+
+    config CIRF_NO_STDIO
+        bool "Disable FILE* functions"
+        default y
+        help
+            Disable cirf_fopen() and related functions.
+            Recommended for ESP32 as fmemopen() is not available.
+
+    config CIRF_NO_MOUNT
+        bool "Disable mount system"
+        default y
+        help
+            Disable cirf_mount() and related functions.
+            Saves code size and avoids malloc/free usage.
+            Recommended for simple embedded projects.
+
+endmenu

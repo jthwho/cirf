@@ -1,0 +1,45 @@
+{
+    "metadata": {
+        "app": "esp32_web_demo",
+        "version": "1.0.0",
+        "description": "ESP32 embedded web resources"
+    },
+    "entries": [
+        {
+            "type": "file",
+            "path": "index.html",
+            "source": "./main/resources/index.html",
+            "metadata": {
+                "description": "Main landing page"
+            }
+        },
+        {
+            "type": "folder",
+            "path": "css",
+            "entries": [
+                {
+                    "type": "file",
+                    "path": "style.css",
+                    "source": "./main/resources/css/style.css"
+                }
+            ]
+        },
+        {
+            "type": "folder",
+            "path": "api",
+            "metadata": {
+                "category": "api"
+            },
+            "entries": [
+                {
+                    "type": "file",
+                    "path": "config.json",
+                    "source": "./main/resources/api/config.json",
+                    "metadata": {
+                        "content-type": "application/json"
+                    }
+                }
+            ]
+        }
+    ]
+}

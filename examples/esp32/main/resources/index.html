@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ESP32 Web Server</title>
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+    <div class="container">
+        <h1>ESP32 CIRF Demo</h1>
+        <p>This page is served from embedded flash memory using CIRF.</p>
+
+        <h2>Features</h2>
+        <ul>
+            <li>Zero-copy file serving from flash</li>
+            <li>Compile-time resource embedding</li>
+            <li>Automatic MIME type detection</li>
+            <li>Nested directory support</li>
+        </ul>
+
+        <h2>API Endpoints</h2>
+        <ul>
+            <li><a href="api/config.json">GET /api/config.json</a> - Device configuration</li>
+        </ul>
+
+        <footer>
+            <p>Powered by CIRF (C Inline Resource Filesystem)</p>
+        </footer>
+    </div>
+</body>
+</html>

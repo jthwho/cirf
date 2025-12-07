@@ -1,0 +1,14 @@
+# CIRF Runtime Configuration
+# These are the recommended settings for ESP32
+
+# Disable FILE* functions (fmemopen not available on ESP-IDF)
+CONFIG_CIRF_NO_STDIO=y
+
+# Disable mount system (avoids malloc, simpler for embedded)
+CONFIG_CIRF_NO_MOUNT=y
+
+# Maximum path length for lookups (reduce for memory-constrained devices)
+CONFIG_CIRF_MAX_PATH=128
+
+# Optional: Reduce default stack size if needed
+# CONFIG_ESP_MAIN_TASK_STACK_SIZE=4096

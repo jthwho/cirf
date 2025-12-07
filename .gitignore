@@ -1,0 +1,35 @@
+# ESP-IDF build artifacts
+build/
+sdkconfig
+sdkconfig.old
+dependencies.lock
+.cache/
+managed_components/
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+
+# IDEs
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+
+# Packet capture files
+*.pcap
+
+# A tmp folder to keep tmp things
+tmp/
+
+# Keep .claude/ directory (project context)
+# !.claude/

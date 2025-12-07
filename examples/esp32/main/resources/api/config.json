@@ -1,0 +1,16 @@
+{
+    "device": {
+        "name": "ESP32 Demo",
+        "firmware": "1.0.0",
+        "chip": "ESP32"
+    },
+    "network": {
+        "hostname": "esp32-demo",
+        "mdns": true
+    },
+    "features": {
+        "web_server": true,
+        "ota_updates": false,
+        "deep_sleep": false
+    }
+}
