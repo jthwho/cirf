@@ -1,68 +1,46 @@
-# CIRF Component for ESP-IDF
+# CIRF CMake Module for ESP-IDF
 #
-# This component provides:
-#   1. The cirf_runtime library (compiled for ESP32)
-#   2. The cirf_generate() function for generating resources at build time
-#   3. Automatic building of the cirf host tool when needed
+# This module provides the cirf_generate() function for ESP-IDF projects.
+# Include this module in your component's CMakeLists.txt BEFORE calling
+# idf_component_register().
 #
 # Usage:
-#   In your main component's CMakeLists.txt:
+#   include($ENV{IDF_PATH}/../path/to/cirf/esp-idf/cirf/cirf_idf.cmake)
+#   # or if CIRF_SOURCE_DIR is set:
+#   include(${CIRF_SOURCE_DIR}/esp-idf/cirf/cirf_idf.cmake)
 #
-#     cirf_generate(
-#         NAME my_resources
-#         CONFIG ${CMAKE_CURRENT_SOURCE_DIR}/../resources.json
-#         DEPENDS
-#             ${CMAKE_CURRENT_SOURCE_DIR}/files/index.html
-#             ${CMAKE_CURRENT_SOURCE_DIR}/files/style.css
-#         OUTPUT_SOURCES MY_CIRF_SOURCES
-#     )
+#   cirf_generate(
+#       NAME my_resources
+#       CONFIG ${CMAKE_CURRENT_SOURCE_DIR}/../resources.json
+#       OUTPUT_SOURCES MY_CIRF_SOURCES
+#   )
 #
-#     idf_component_register(
-#         SRCS "main.c" ${MY_CIRF_SOURCES}
-#         INCLUDE_DIRS "." "${MY_CIRF_SOURCES_INCLUDE_DIR}"
-#         REQUIRES cirf
-#     )
-#
-# Configuration options (set in menuconfig or sdkconfig.defaults):
-#   CONFIG_CIRF_MAX_PATH   - Maximum path length (default: 256)
-#   CONFIG_CIRF_NO_STDIO   - Disable FILE* functions
-#   CONFIG_CIRF_NO_MOUNT   - Disable mount system (recommended for ESP32)
+#   idf_component_register(
+#       SRCS "main.c" ${MY_CIRF_SOURCES}
+#       INCLUDE_DIRS "." "${MY_CIRF_SOURCES_INCLUDE_DIR}"
+#       REQUIRES cirf
+#   )
 
-# Get the CIRF source directory (parent of idf_component)
-get_filename_component(CIRF_SOURCE_DIR "${CMAKE_CURRENT_LIST_DIR}/.." ABSOLUTE)
-
-# Register the runtime component
-idf_component_register(
-    SRCS "${CIRF_SOURCE_DIR}/src/runtime.c"
-    INCLUDE_DIRS "${CIRF_SOURCE_DIR}/include"
-)
-
-# Apply configuration options as compile definitions
-if(CONFIG_CIRF_MAX_PATH)
-    target_compile_definitions(${COMPONENT_LIB} PUBLIC CIRF_MAX_PATH=${CONFIG_CIRF_MAX_PATH})
-endif()
-
-if(CONFIG_CIRF_NO_STDIO)
-    target_compile_definitions(${COMPONENT_LIB} PUBLIC CIRF_NO_STDIO)
-endif()
-
-if(CONFIG_CIRF_NO_MOUNT)
-    target_compile_definitions(${COMPONENT_LIB} PUBLIC CIRF_NO_MOUNT)
-endif()
+# Find CIRF source directory (two levels up from esp-idf/cirf)
+get_filename_component(CIRF_SOURCE_DIR "${CMAKE_CURRENT_LIST_DIR}/../.." ABSOLUTE)
 
 # ============================================================================
 # Host tool management
 # ============================================================================
 
-# Directory for building the host tool
-set(CIRF_HOST_BUILD_DIR "${CMAKE_BINARY_DIR}/cirf-host" CACHE INTERNAL "")
-set(CIRF_HOST_EXECUTABLE "${CIRF_HOST_BUILD_DIR}/cirf" CACHE INTERNAL "")
-
 # Function to ensure the host tool is built
 function(cirf_ensure_host_tool)
+    # Skip during ESP-IDF requirements scanning phase (script mode)
+    if(CMAKE_SCRIPT_MODE_FILE)
+        return()
+    endif()
+
     if(TARGET cirf_host_build)
         return()  # Already set up
     endif()
+
+    # Directory for building the host tool
+    set(CIRF_HOST_BUILD_DIR "${CMAKE_BINARY_DIR}/cirf-host" CACHE INTERNAL "")
 
     # Check if cirf is in PATH
     find_program(_cirf_in_path cirf)
@@ -98,8 +76,7 @@ function(cirf_ensure_host_tool)
     # Create build directory
     file(MAKE_DIRECTORY "${CIRF_HOST_BUILD_DIR}")
 
-    # Configure and build cirf for host at configure time
-    # (This ensures it's ready before any targets need it)
+    # Configure cirf for host at configure time
     message(STATUS "CIRF: Configuring host build with ${_host_cc}")
 
     execute_process(
@@ -120,9 +97,12 @@ function(cirf_ensure_host_tool)
         message(FATAL_ERROR "CIRF: Failed to configure host build:\n${_config_error}")
     endif()
 
+    set(_host_executable "${CIRF_HOST_BUILD_DIR}/cirf")
+    set(CIRF_HOST_EXECUTABLE "${_host_executable}" CACHE INTERNAL "" FORCE)
+
     # Build target that builds the host tool
     add_custom_command(
-        OUTPUT "${CIRF_HOST_EXECUTABLE}"
+        OUTPUT "${_host_executable}"
         COMMAND ${CMAKE_COMMAND} --build . --target cirf
         WORKING_DIRECTORY "${CIRF_HOST_BUILD_DIR}"
         COMMENT "CIRF: Building host tool"
@@ -130,10 +110,10 @@ function(cirf_ensure_host_tool)
     )
 
     add_custom_target(cirf_host_build
-        DEPENDS "${CIRF_HOST_EXECUTABLE}"
+        DEPENDS "${_host_executable}"
     )
 
-    message(STATUS "CIRF: Host tool will be built at: ${CIRF_HOST_EXECUTABLE}")
+    message(STATUS "CIRF: Host tool will be built at: ${_host_executable}")
 endfunction()
 
 # ============================================================================
@@ -174,6 +154,20 @@ function(cirf_generate)
         message(FATAL_ERROR "cirf_generate: OUTPUT_SOURCES is required")
     endif()
 
+    # Output paths in build directory
+    set(_out_c "${CMAKE_CURRENT_BINARY_DIR}/${ARG_NAME}.c")
+    set(_out_h "${CMAKE_CURRENT_BINARY_DIR}/${ARG_NAME}.h")
+    set(_out_d "${CMAKE_CURRENT_BINARY_DIR}/${ARG_NAME}.d")
+
+    # Set output variables (needed even in script mode for idf_component_register)
+    set(${ARG_OUTPUT_SOURCES} "${_out_c}" PARENT_SCOPE)
+    set(${ARG_OUTPUT_SOURCES}_INCLUDE_DIR "${CMAKE_CURRENT_BINARY_DIR}" PARENT_SCOPE)
+
+    # Skip the rest during ESP-IDF requirements scanning phase (script mode)
+    if(CMAKE_SCRIPT_MODE_FILE)
+        return()
+    endif()
+
     # Ensure host tool is available
     cirf_ensure_host_tool()
 
@@ -186,10 +180,6 @@ function(cirf_generate)
         get_filename_component(_work_dir "${_config_abs}" DIRECTORY)
     endif()
 
-    # Output paths in build directory
-    set(_out_c "${CMAKE_CURRENT_BINARY_DIR}/${ARG_NAME}.c")
-    set(_out_h "${CMAKE_CURRENT_BINARY_DIR}/${ARG_NAME}.h")
-
     # Custom command to generate resources
     add_custom_command(
         OUTPUT "${_out_c}" "${_out_h}"
@@ -198,16 +188,14 @@ function(cirf_generate)
             -c "${_config_abs}"
             -o "${_out_c}"
             -H "${_out_h}"
+            -M "${_out_d}"
         DEPENDS
             cirf_host_build
             "${_config_abs}"
             ${ARG_DEPENDS}
+        DEPFILE "${_out_d}"
         WORKING_DIRECTORY "${_work_dir}"
         COMMENT "CIRF: Generating ${ARG_NAME} from ${ARG_CONFIG}"
         VERBATIM
     )
-
-    # Set output variables in parent scope
-    set(${ARG_OUTPUT_SOURCES} "${_out_c}" PARENT_SCOPE)
-    set(${ARG_OUTPUT_SOURCES}_INCLUDE_DIR "${CMAKE_CURRENT_BINARY_DIR}" PARENT_SCOPE)
 endfunction()

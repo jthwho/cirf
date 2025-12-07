@@ -3,6 +3,11 @@
 # This component contains the application code and generated resources.
 # Resources are generated automatically at build time using cirf_generate().
 
+# Include CIRF module for resource generation
+# (must be included before calling cirf_generate)
+get_filename_component(CIRF_SOURCE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/../../.." ABSOLUTE)
+include(${CIRF_SOURCE_DIR}/esp-idf/cirf/cirf_idf.cmake)
+
 # Generate resources - cirf host tool is built automatically if needed
 cirf_generate(
     NAME web_resources
