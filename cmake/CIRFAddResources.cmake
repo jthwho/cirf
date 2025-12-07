@@ -1,5 +1,8 @@
 # CIRFAddResources.cmake
 # CMake function to generate resource files using CIRF
+#
+# Source file dependencies are tracked at build time via DEPFILE, so modifying
+# any embedded file will trigger regeneration automatically.
 
 # cirf_add_resources(<name>
 #     CONFIG <config_file>
@@ -103,11 +106,16 @@ function(cirf_add_resources name)
 
     # Get absolute path to config file
     get_filename_component(CONFIG_ABS ${ARG_CONFIG} ABSOLUTE)
+    get_filename_component(CONFIG_DIR ${CONFIG_ABS} DIRECTORY)
 
-    # Collect all source files from config for dependency tracking
-    # (This is a simplified version - ideally we'd parse the JSON)
+    # Output depfile path
+    set(OUTPUT_D ${ARG_OUTPUT_DIR}/${name}.d)
+
+    # Start dependency list with config file
     set(CONFIG_DEPS ${CONFIG_ABS})
 
+    # Custom command to generate resources
+    # Uses DEPFILE so that source file dependencies are tracked at build time
     add_custom_command(
         OUTPUT ${OUTPUT_C} ${OUTPUT_H}
         COMMAND ${CIRF_EXECUTABLE}
@@ -115,7 +123,9 @@ function(cirf_add_resources name)
             -c ${CONFIG_ABS}
             -o ${OUTPUT_C}
             -H ${OUTPUT_H}
+            -M ${OUTPUT_D}
         DEPENDS ${CIRF_DEPENDS} ${CONFIG_DEPS}
+        DEPFILE ${OUTPUT_D}
         WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
         COMMENT "Generating ${name} resources"
         VERBATIM

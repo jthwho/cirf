@@ -463,12 +463,9 @@ This function:
 For embedded targets (ESP32, ARM, etc.):
 
 ```cmake
-include(CIRFGenerateResources)
+include(CIRF)
 
-# Build cirf for host automatically if needed
-cirf_ensure_host_tool()
-
-# Generate resources (returns source files in variable)
+# Generate resources (cirf tool built automatically from source)
 cirf_generate_resources(
     NAME my_resources
     CONFIG ${CMAKE_CURRENT_SOURCE_DIR}/resources.json
@@ -482,6 +479,9 @@ cirf_add_runtime_library()
 add_executable(app main.c ${MY_SOURCES})
 target_link_libraries(app cirf_runtime)
 ```
+
+Source file dependencies are tracked at build time using `cirf --depfile`, so
+modifying any source file will trigger regeneration automatically.
 
 ### ESP-IDF Component
 

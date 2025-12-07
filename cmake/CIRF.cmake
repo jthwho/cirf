@@ -1,16 +1,20 @@
-# CIRFGenerateResources.cmake
+# CIRF.cmake
 #
 # CMake module for generating CIRF resources with cross-compilation support.
 # This module handles building the cirf tool for the host and generating
 # resources that can be compiled for any target platform.
 #
+# Features:
+#   - Automatic cirf tool building from source when needed
+#   - Build-time dependency tracking via DEPFILE (modifying source files triggers regeneration)
+#   - Cross-compilation support for embedded targets
+#
 # Functions:
-#   cirf_ensure_host_tool()     - Build cirf for the host (once per project)
 #   cirf_generate_resources()   - Generate resources, return source files in variable
+#   cirf_add_runtime_library()  - Add the CIRF runtime library for helper functions
 #
 # Usage:
-#   include(CIRFGenerateResources)
-#   cirf_ensure_host_tool()
+#   include(CIRF)
 #   cirf_generate_resources(
 #       NAME my_resources
 #       CONFIG ${CMAKE_CURRENT_SOURCE_DIR}/resources.json
@@ -47,15 +51,10 @@ function(_cirf_find_source_dir out_var)
     set(${out_var} "" PARENT_SCOPE)
 endfunction()
 
-#
-# cirf_ensure_host_tool()
-#
-# Ensures the cirf executable is available for the host machine.
+# Internal: Ensure the cirf executable is available for the host machine.
 # In cross-compilation scenarios, this builds cirf using the host compiler.
-#
 # Sets CIRF_EXECUTABLE in parent scope.
-#
-function(cirf_ensure_host_tool)
+function(_cirf_ensure_host_tool)
     # Already have an executable?
     if(CIRF_HOST_EXECUTABLE AND EXISTS "${CIRF_HOST_EXECUTABLE}")
         set(CIRF_EXECUTABLE "${CIRF_HOST_EXECUTABLE}" PARENT_SCOPE)
@@ -168,9 +167,9 @@ function(cirf_generate_resources)
         message(FATAL_ERROR "cirf_generate_resources: OUTPUT_VAR is required")
     endif()
 
-    # Ensure we have the host tool
+    # Ensure we have the host tool (builds automatically if needed)
     if(NOT CIRF_EXECUTABLE)
-        cirf_ensure_host_tool()
+        _cirf_ensure_host_tool()
     endif()
 
     # Get absolute path to config
@@ -180,14 +179,23 @@ function(cirf_generate_resources)
     # Output paths
     set(_out_c "${CMAKE_CURRENT_BINARY_DIR}/${ARG_NAME}.c")
     set(_out_h "${CMAKE_CURRENT_BINARY_DIR}/${ARG_NAME}.h")
+    set(_out_d "${CMAKE_CURRENT_BINARY_DIR}/${ARG_NAME}.d")
 
-    # Build dependency list
-    set(_depends "${_config_abs}" ${ARG_DEPENDS})
+    # Build dependency list - start with config file
+    set(_depends "${_config_abs}")
+
+    # Add manually specified dependencies
+    if(ARG_DEPENDS)
+        list(APPEND _depends ${ARG_DEPENDS})
+    endif()
+
+    # Add host tool target as dependency if building it
     if(CIRF_HOST_TOOL_TARGET)
         list(APPEND _depends ${CIRF_HOST_TOOL_TARGET})
     endif()
 
     # Custom command to generate resources
+    # Uses DEPFILE so that source file dependencies are tracked at build time
     add_custom_command(
         OUTPUT "${_out_c}" "${_out_h}"
         COMMAND "${CIRF_EXECUTABLE}"
@@ -195,7 +203,9 @@ function(cirf_generate_resources)
             -c "${_config_abs}"
             -o "${_out_c}"
             -H "${_out_h}"
+            -M "${_out_d}"
         DEPENDS ${_depends}
+        DEPFILE "${_out_d}"
         WORKING_DIRECTORY "${_config_dir}"
         COMMENT "CIRF: Generating ${ARG_NAME} resources"
         VERBATIM

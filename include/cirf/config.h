@@ -11,6 +11,11 @@ typedef struct cirf_config {
 } cirf_config_t;
 
 cirf_error_t config_load(const char *path, const char *name, cirf_config_t **out);
+cirf_error_t config_load_deps(const char *path, const char *name, cirf_config_t **out);
 void config_destroy(cirf_config_t *config);
+
+/* Collect all source file paths from config. Returns semicolon-separated list.
+ * Caller must free the returned string. */
+char *config_get_source_paths(const cirf_config_t *config);
 
 #endif /* CIRF_CONFIG_H */

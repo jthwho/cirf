@@ -44,21 +44,30 @@ set(CIRF_SOURCE_DIR "/path/to/cirf")
 
 ```cmake
 list(APPEND CMAKE_MODULE_PATH "${CIRF_SOURCE_DIR}/cmake")
-include(CIRFGenerateResources)
+include(CIRF)
 ```
 
-### 3. Build Host Tool and Generate Resources
+### 3. Generate Resources
 
 ```cmake
-cirf_ensure_host_tool()
+cirf_generate_resources(
+    NAME my_resources
+    CONFIG ${CMAKE_CURRENT_SOURCE_DIR}/resources.json
+    OUTPUT_VAR RESOURCE_SOURCES
+)
+```
 
+The cirf tool is built automatically from source when needed. Source file
+dependencies are tracked at build time, so modifying any source file will
+trigger regeneration. If you need to manually specify additional dependencies:
+
+```cmake
 cirf_generate_resources(
     NAME my_resources
     CONFIG ${CMAKE_CURRENT_SOURCE_DIR}/resources.json
     OUTPUT_VAR RESOURCE_SOURCES
     DEPENDS
         ${CMAKE_CURRENT_SOURCE_DIR}/resources/file1.txt
-        ${CMAKE_CURRENT_SOURCE_DIR}/resources/file2.json
 )
 ```
 

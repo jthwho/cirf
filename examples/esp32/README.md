@@ -127,8 +127,10 @@ Typical overhead:
 
 1. Add files to `main/resources/`
 2. Update `resources.json` with new entries
-3. Add the new files to the `DEPENDS` list in `main/CMakeLists.txt`
-4. Rebuild - resources regenerate automatically
+3. Rebuild - resources regenerate automatically
+
+Source file dependencies are tracked at build time, so modifying any embedded
+file will trigger regeneration without needing to manually specify dependencies.
 
 ## Using in Your Own Project
 

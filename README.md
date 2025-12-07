@@ -38,6 +38,8 @@ cirf -n <basename> -c <config.json> -o <output.c> -H <output.h>
 | `-c, --config <file>` | Input configuration file (JSON) |
 | `-o, --output <file>` | Output C source file |
 | `-H, --header <file>` | Output C header file |
+| `-d, --deps` | Output source file dependencies (one per line) |
+| `-M, --depfile <file>` | Write Makefile-format dependency file |
 | `--help` | Show help message |
 | `--version` | Show version information |
 
@@ -359,12 +361,9 @@ The first argument to `cirf_add_resources` is the base name, which determines:
 For embedded targets, use `cirf_generate_resources()` from the cross-compilation module:
 
 ```cmake
-include(CIRFGenerateResources)
+include(CIRF)
 
-# Ensure host tool is available (builds automatically if needed)
-cirf_ensure_host_tool()
-
-# Generate resources
+# Generate resources (cirf tool built automatically, dependencies auto-detected)
 cirf_generate_resources(
     NAME my_resources
     CONFIG ${CMAKE_CURRENT_SOURCE_DIR}/resources.json
@@ -379,6 +378,10 @@ add_executable(my_app main.c ${MY_RESOURCE_SOURCES})
 target_include_directories(my_app PRIVATE ${MY_RESOURCE_SOURCES_INCLUDE_DIR})
 target_link_libraries(my_app PRIVATE cirf_runtime)
 ```
+
+The cirf tool is built automatically from source when needed. Source file dependencies
+are tracked at build time using the `--depfile` option, so modifying any source file
+will trigger regeneration of the resources.
 
 ## ESP-IDF Integration
 

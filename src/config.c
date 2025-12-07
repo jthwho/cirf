@@ -55,6 +55,11 @@ static char *path_join(const char *a, const char *b)
     if (!a || !*a) return strdup_local(b);
     if (!b || !*b) return strdup_local(a);
 
+    /* Skip leading ./ from second path */
+    while (b[0] == '.' && b[1] == '/') {
+        b += 2;
+    }
+
     size_t a_len = strlen(a);
     size_t b_len = strlen(b);
     int need_sep = (a[a_len - 1] != '/');
@@ -385,4 +390,119 @@ void config_destroy(cirf_config_t *config)
     free(config->base_dir);
     vfs_destroy(config->root);
     free(config);
+}
+
+cirf_error_t config_load_deps(const char *path, const char *name, cirf_config_t **out)
+{
+    if (!path || !name || !out) {
+        return CIRF_ERR_INVALID;
+    }
+
+    json_value_t *json = NULL;
+    cirf_error_t err = json_parse_file(path, &json);
+    if (err != CIRF_OK) {
+        return err;
+    }
+
+    if (json->type != JSON_OBJECT) {
+        json_destroy(json);
+        return CIRF_ERR_PARSE;
+    }
+
+    cirf_config_t *config = calloc(1, sizeof(cirf_config_t));
+    if (!config) {
+        json_destroy(json);
+        return CIRF_ERR_NOMEM;
+    }
+
+    config->name = strdup_local(name);
+    config->base_dir = path_dirname(path);
+    config->root = vfs_create_root();
+
+    if (!config->name || !config->base_dir || !config->root) {
+        config_destroy(config);
+        json_destroy(json);
+        return CIRF_ERR_NOMEM;
+    }
+
+    /* Load root metadata */
+    load_metadata(json, &config->root->metadata);
+
+    /* Process entries */
+    json_value_t *entries = json_get(json, "entries");
+    if (entries && entries->type == JSON_ARRAY) {
+        for (size_t i = 0; i < entries->data.array.count; i++) {
+            err = process_entry(config, &entries->data.array.items[i], config->root);
+            if (err != CIRF_OK) {
+                config_destroy(config);
+                json_destroy(json);
+                return err;
+            }
+        }
+    }
+
+    json_destroy(json);
+
+    /* Skip loading file data - just return the structure with source paths */
+    *out = config;
+    return CIRF_OK;
+}
+
+static void collect_source_paths_folder(const vfs_folder_t *folder, char **buf,
+                                         size_t *len, size_t *cap)
+{
+    /* Collect files in this folder */
+    for (vfs_file_t *file = folder->files; file; file = file->next) {
+        if (file->source_path) {
+            size_t path_len = strlen(file->source_path);
+            size_t needed = *len + path_len + 2; /* +1 for newline, +1 for null */
+
+            if (needed > *cap) {
+                size_t new_cap = *cap * 2;
+                if (new_cap < needed) new_cap = needed;
+                char *new_buf = realloc(*buf, new_cap);
+                if (!new_buf) return;
+                *buf = new_buf;
+                *cap = new_cap;
+            }
+
+            memcpy(*buf + *len, file->source_path, path_len);
+            *len += path_len;
+            (*buf)[(*len)++] = '\n';
+        }
+    }
+
+    /* Recurse into child folders */
+    for (vfs_folder_t *child = folder->children; child; child = child->next) {
+        collect_source_paths_folder(child, buf, len, cap);
+    }
+}
+
+char *config_get_source_paths(const cirf_config_t *config)
+{
+    if (!config || !config->root) return NULL;
+
+    size_t cap = 1024;
+    size_t len = 0;
+    char *buf = malloc(cap);
+    if (!buf) return NULL;
+
+    collect_source_paths_folder(config->root, &buf, &len, &cap);
+
+    /* Null-terminate */
+    if (len > 0 && buf[len - 1] == '\n') {
+        buf[len - 1] = '\0'; /* Replace trailing newline with null */
+    } else {
+        if (len + 1 > cap) {
+            char *new_buf = realloc(buf, len + 1);
+            if (!new_buf) {
+                free(buf);
+                return NULL;
+            }
+            buf = new_buf;
+        }
+        buf[len] = '\0';
+    }
+
+    return buf;
 }

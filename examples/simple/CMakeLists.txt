@@ -24,19 +24,15 @@ get_filename_component(CIRF_SOURCE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/../.." ABSOL
 
 # Include the CIRF CMake module
 list(APPEND CMAKE_MODULE_PATH "${CIRF_SOURCE_DIR}/cmake")
-include(CIRFGenerateResources)
-
-# Ensure the cirf host tool is available (builds automatically if needed)
-cirf_ensure_host_tool()
+include(CIRF)
 
 # Generate resources from configuration file
+# The cirf tool is built automatically if needed
+# Dependencies are automatically detected via cirf --deps
 cirf_generate_resources(
     NAME simple_resources
     CONFIG ${CMAKE_CURRENT_SOURCE_DIR}/resources.json
     OUTPUT_VAR RESOURCE_SOURCES
-    DEPENDS
-        ${CMAKE_CURRENT_SOURCE_DIR}/resources/hello.txt
-        ${CMAKE_CURRENT_SOURCE_DIR}/resources/data.json
 )
 
 # Add the CIRF runtime library (for cirf_find_file, cirf_fopen, etc.)
