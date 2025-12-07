@@ -28,7 +28,7 @@
 #include "types.h"
 
 #ifndef CIRF_NO_STDIO
-#include <stdio.h>  /* For FILE*, fmemopen support */
+#include <stdio.h> /* For FILE*, fmemopen support */
 #endif
 
 #ifdef __cplusplus
@@ -69,8 +69,7 @@ const cirf_folder_t *cirf_find_folder(const cirf_folder_t *root, const char *pat
  * @param key       Key to look up
  * @return Value string, or NULL if not found
  */
-const char *cirf_get_metadata(const cirf_metadata_t *metadata, size_t count,
-                               const char *key);
+const char *cirf_get_metadata(const cirf_metadata_t *metadata, size_t count, const char *key);
 
 /* ========================================================================
  * Navigation functions
@@ -95,8 +94,7 @@ const cirf_folder_t *cirf_get_root(const cirf_file_t *file);
  * @param callback  Function to call for each file
  * @param ctx       User context passed to callback
  */
-void cirf_foreach_file(const cirf_folder_t *folder,
-                        cirf_file_callback_t callback, void *ctx);
+void cirf_foreach_file(const cirf_folder_t *folder, cirf_file_callback_t callback, void *ctx);
 
 /*
  * Iterate over all files in a folder tree (recursive).
@@ -105,8 +103,8 @@ void cirf_foreach_file(const cirf_folder_t *folder,
  * @param callback  Function to call for each file
  * @param ctx       User context passed to callback
  */
-void cirf_foreach_file_recursive(const cirf_folder_t *folder,
-                                  cirf_file_callback_t callback, void *ctx);
+void cirf_foreach_file_recursive(const cirf_folder_t *folder, cirf_file_callback_t callback,
+                                 void *ctx);
 
 /*
  * Count total files in a folder tree (recursive).
@@ -187,9 +185,9 @@ FILE *cirf_fopen_path(const cirf_folder_t *root, const char *path);
  * Mounted filesystem entry.
  */
 typedef struct cirf_mount {
-    const char *prefix;            /* Path prefix (e.g., "/assets/") */
-    const cirf_folder_t *root;     /* Resource root */
-    struct cirf_mount *next;       /* Next mount in chain */
+        const char          *prefix; /* Path prefix (e.g., "/assets/") */
+        const cirf_folder_t *root;   /* Resource root */
+        struct cirf_mount   *next;   /* Next mount in chain */
 } cirf_mount_t;
 
 /*

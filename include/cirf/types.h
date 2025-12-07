@@ -19,8 +19,8 @@ extern "C" {
  * Metadata key-value pair.
  */
 typedef struct cirf_metadata {
-    const char *key;
-    const char *value;
+        const char *key;
+        const char *value;
 } cirf_metadata_t;
 
 /*
@@ -32,29 +32,29 @@ typedef struct cirf_folder cirf_folder_t;
  * Embedded file entry.
  */
 typedef struct cirf_file {
-    const char *name;              /* Filename only (e.g., "icon.png") */
-    const char *path;              /* Full virtual path (e.g., "images/icon.png") */
-    const char *mime;              /* MIME type (e.g., "image/png") */
-    const unsigned char *data;     /* Raw file data */
-    size_t size;                   /* File size in bytes */
-    const cirf_folder_t *parent;   /* Parent folder */
-    const cirf_metadata_t *metadata;
-    size_t metadata_count;
+        const char            *name;   /* Filename only (e.g., "icon.png") */
+        const char            *path;   /* Full virtual path (e.g., "images/icon.png") */
+        const char            *mime;   /* MIME type (e.g., "image/png") */
+        const unsigned char   *data;   /* Raw file data */
+        size_t                 size;   /* File size in bytes */
+        const cirf_folder_t   *parent; /* Parent folder */
+        const cirf_metadata_t *metadata;
+        size_t                 metadata_count;
 } cirf_file_t;
 
 /*
  * Virtual folder/directory.
  */
 struct cirf_folder {
-    const char *name;              /* Folder name only (e.g., "images") */
-    const char *path;              /* Full virtual path (e.g., "assets/images") */
-    const cirf_folder_t *parent;   /* Parent folder (NULL for root) */
-    const cirf_folder_t *children; /* First child folder (array) */
-    size_t child_count;            /* Number of child folders */
-    const cirf_file_t *files;      /* Files in this folder (array) */
-    size_t file_count;             /* Number of files */
-    const cirf_metadata_t *metadata;
-    size_t metadata_count;
+        const char            *name;        /* Folder name only (e.g., "images") */
+        const char            *path;        /* Full virtual path (e.g., "assets/images") */
+        const cirf_folder_t   *parent;      /* Parent folder (NULL for root) */
+        const cirf_folder_t   *children;    /* First child folder (array) */
+        size_t                 child_count; /* Number of child folders */
+        const cirf_file_t     *files;       /* Files in this folder (array) */
+        size_t                 file_count;  /* Number of files */
+        const cirf_metadata_t *metadata;
+        size_t                 metadata_count;
 };
 
 /*

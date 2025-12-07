@@ -1,31 +1,30 @@
 #include "cirf/codegen.h"
 #include "cirf/writer.h"
+#include <ctype.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <ctype.h>
 
 typedef struct {
-    const char *name;
-    writer_t *w;
-    int file_index;
-    int folder_index;
-    int metadata_index;
+        const char *name;
+        writer_t   *w;
+        int         file_index;
+        int         folder_index;
+        int         metadata_index;
 } codegen_ctx_t;
 
-static char *make_identifier(const char *path)
-{
-    if (!path || !*path) {
+static char *make_identifier(const char *path) {
+    if(!path || !*path) {
         return strdup("root");
     }
 
     size_t len = strlen(path);
-    char *id = malloc(len + 1);
-    if (!id) return NULL;
+    char  *id = malloc(len + 1);
+    if(!id) return NULL;
 
-    for (size_t i = 0; i < len; i++) {
+    for(size_t i = 0; i < len; i++) {
         char c = path[i];
-        if (isalnum((unsigned char)c)) {
+        if(isalnum((unsigned char)c)) {
             id[i] = c;
         } else {
             id[i] = '_';
@@ -35,16 +34,15 @@ static char *make_identifier(const char *path)
     return id;
 }
 
-static char *make_file_symbol(const char *prefix, const char *path)
-{
+static char *make_file_symbol(const char *prefix, const char *path) {
     char *id = make_identifier(path);
-    if (!id) return NULL;
+    if(!id) return NULL;
 
     size_t prefix_len = strlen(prefix);
     size_t id_len = strlen(id);
     /* prefix + "_file_" + id + null */
     char *result = malloc(prefix_len + 6 + id_len + 1);
-    if (!result) {
+    if(!result) {
         free(id);
         return NULL;
     }
@@ -53,25 +51,24 @@ static char *make_file_symbol(const char *prefix, const char *path)
     return result;
 }
 
-static char *make_dir_symbol(const char *prefix, const char *path)
-{
-    if (!path || !*path) {
+static char *make_dir_symbol(const char *prefix, const char *path) {
+    if(!path || !*path) {
         /* Root folder */
         size_t prefix_len = strlen(prefix);
-        char *result = malloc(prefix_len + 5 + 1);
-        if (!result) return NULL;
+        char  *result = malloc(prefix_len + 5 + 1);
+        if(!result) return NULL;
         sprintf(result, "%s_root", prefix);
         return result;
     }
 
     char *id = make_identifier(path);
-    if (!id) return NULL;
+    if(!id) return NULL;
 
     size_t prefix_len = strlen(prefix);
     size_t id_len = strlen(id);
     /* prefix + "_dir_" + id + null */
     char *result = malloc(prefix_len + 5 + id_len + 1);
-    if (!result) {
+    if(!result) {
         free(id);
         return NULL;
     }
@@ -80,28 +77,26 @@ static char *make_dir_symbol(const char *prefix, const char *path)
     return result;
 }
 
-
-static void generate_file_extern_decls(writer_t *w, const char *name, const vfs_folder_t *folder)
-{
-    for (const vfs_file_t *f = folder->files; f; f = f->next) {
+static void generate_file_extern_decls(writer_t *w, const char *name, const vfs_folder_t *folder) {
+    for(const vfs_file_t *f = folder->files; f; f = f->next) {
         char *sym = make_file_symbol(name, f->path);
-        if (sym) {
+        if(sym) {
             writer_printf(w, "extern const cirf_file_t * const %s;\n", sym);
             free(sym);
         }
     }
 
-    for (const vfs_folder_t *c = folder->children; c; c = c->next) {
+    for(const vfs_folder_t *c = folder->children; c; c = c->next) {
         generate_file_extern_decls(w, name, c);
     }
 }
 
-static void generate_folder_extern_decls(writer_t *w, const char *name, const vfs_folder_t *folder)
-{
+static void generate_folder_extern_decls(writer_t *w, const char *name,
+                                         const vfs_folder_t *folder) {
     /* Generate for children first */
-    for (const vfs_folder_t *c = folder->children; c; c = c->next) {
+    for(const vfs_folder_t *c = folder->children; c; c = c->next) {
         char *sym = make_dir_symbol(name, c->path);
-        if (sym) {
+        if(sym) {
             writer_printf(w, "extern const cirf_folder_t %s;\n", sym);
             free(sym);
         }
@@ -109,12 +104,11 @@ static void generate_folder_extern_decls(writer_t *w, const char *name, const vf
     }
 }
 
-static void generate_file_data(codegen_ctx_t *ctx, const vfs_file_t *file, int index)
-{
+static void generate_file_data(codegen_ctx_t *ctx, const vfs_file_t *file, int index) {
     writer_printf(ctx->w, "static const unsigned char %s_data_%d[] = {\n", ctx->name, index);
     writer_indent(ctx->w);
 
-    if (file->size > 0) {
+    if(file->size > 0) {
         writer_write_bytes_hex(ctx->w, file->data, file->size, 12);
     }
 
@@ -123,24 +117,22 @@ static void generate_file_data(codegen_ctx_t *ctx, const vfs_file_t *file, int i
     writer_printf(ctx->w, "};\n\n");
 }
 
-static int generate_metadata(codegen_ctx_t *ctx, const vfs_metadata_t *meta)
-{
-    if (!meta) return -1;
+static int generate_metadata(codegen_ctx_t *ctx, const vfs_metadata_t *meta) {
+    if(!meta) return -1;
 
-    int index = ctx->metadata_index++;
+    int    index = ctx->metadata_index++;
     size_t count = vfs_metadata_count(meta);
 
-    writer_printf(ctx->w, "static const cirf_metadata_t %s_meta_%d[] = {\n",
-                  ctx->name, index);
+    writer_printf(ctx->w, "static const cirf_metadata_t %s_meta_%d[] = {\n", ctx->name, index);
     writer_indent(ctx->w);
 
-    for (const vfs_metadata_t *m = meta; m; m = m->next) {
+    for(const vfs_metadata_t *m = meta; m; m = m->next) {
         writer_puts(ctx->w, "{ ");
         writer_write_string_escaped(ctx->w, m->key);
         writer_puts(ctx->w, ", ");
         writer_write_string_escaped(ctx->w, m->value);
         writer_puts(ctx->w, " }");
-        if (m->next) {
+        if(m->next) {
             writer_puts(ctx->w, ",");
         }
         writer_newline(ctx->w);
@@ -153,47 +145,43 @@ static int generate_metadata(codegen_ctx_t *ctx, const vfs_metadata_t *meta)
     return index;
 }
 
-static void generate_folder_forward_decl(codegen_ctx_t *ctx, const vfs_folder_t *folder)
-{
+static void generate_folder_forward_decl(codegen_ctx_t *ctx, const vfs_folder_t *folder) {
     char *sym = make_dir_symbol(ctx->name, folder->path);
-    if (sym) {
+    if(sym) {
         writer_printf(ctx->w, "const cirf_folder_t %s;\n", sym);
         free(sym);
     }
 }
 
-static void generate_all_data(codegen_ctx_t *ctx, const vfs_folder_t *folder)
-{
-    for (const vfs_file_t *f = folder->files; f; f = f->next) {
+static void generate_all_data(codegen_ctx_t *ctx, const vfs_folder_t *folder) {
+    for(const vfs_file_t *f = folder->files; f; f = f->next) {
         generate_file_data(ctx, f, ctx->file_index++);
     }
 
-    for (const vfs_folder_t *c = folder->children; c; c = c->next) {
+    for(const vfs_folder_t *c = folder->children; c; c = c->next) {
         generate_all_data(ctx, c);
     }
 }
 
 typedef struct file_meta_info {
-    const vfs_file_t *file;
-    int metadata_index;
-    struct file_meta_info *next;
+        const vfs_file_t      *file;
+        int                    metadata_index;
+        struct file_meta_info *next;
 } file_meta_info_t;
 
 typedef struct folder_info {
-    int self_index;
-    int files_start;
-    int files_count;
-    int children_start;
-    int children_count;
-    int metadata_index;
-    const vfs_folder_t *folder;
-    struct folder_info *next;
+        int                 self_index;
+        int                 files_start;
+        int                 files_count;
+        int                 children_start;
+        int                 children_count;
+        int                 metadata_index;
+        const vfs_folder_t *folder;
+        struct folder_info *next;
 } folder_info_t;
 
-static void collect_folder_info(const vfs_folder_t *folder,
-                                 folder_info_t **list,
-                                 int *file_idx, int *folder_idx)
-{
+static void collect_folder_info(const vfs_folder_t *folder, folder_info_t **list, int *file_idx,
+                                int *folder_idx) {
     folder_info_t *info = calloc(1, sizeof(folder_info_t));
     info->folder = folder;
     info->self_index = (*folder_idx)++;
@@ -205,50 +193,47 @@ static void collect_folder_info(const vfs_folder_t *folder,
     info->metadata_index = -1;
 
     /* Add to list */
-    if (!*list) {
+    if(!*list) {
         *list = info;
     } else {
         folder_info_t *last = *list;
-        while (last->next) last = last->next;
+        while(last->next)
+            last = last->next;
         last->next = info;
     }
 
     /* Recurse for children - they get consecutive indices */
-    for (const vfs_folder_t *c = folder->children; c; c = c->next) {
+    for(const vfs_folder_t *c = folder->children; c; c = c->next) {
         collect_folder_info(c, list, file_idx, folder_idx);
     }
 }
 
-static folder_info_t *find_folder_info(folder_info_t *list, const vfs_folder_t *folder)
-{
-    for (folder_info_t *i = list; i; i = i->next) {
-        if (i->folder == folder) return i;
+static folder_info_t *find_folder_info(folder_info_t *list, const vfs_folder_t *folder) {
+    for(folder_info_t *i = list; i; i = i->next) {
+        if(i->folder == folder) return i;
     }
     return NULL;
 }
 
-static void free_folder_info(folder_info_t *list)
-{
-    while (list) {
+static void free_folder_info(folder_info_t *list) {
+    while(list) {
         folder_info_t *next = list->next;
         free(list);
         list = next;
     }
 }
 
-static void free_file_meta_info(file_meta_info_t *list)
-{
-    while (list) {
+static void free_file_meta_info(file_meta_info_t *list) {
+    while(list) {
         file_meta_info_t *next = list->next;
         free(list);
         list = next;
     }
 }
 
-static int find_file_meta_index(file_meta_info_t *list, const vfs_file_t *file)
-{
-    for (file_meta_info_t *m = list; m; m = m->next) {
-        if (m->file == file) {
+static int find_file_meta_index(file_meta_info_t *list, const vfs_file_t *file) {
+    for(file_meta_info_t *m = list; m; m = m->next) {
+        if(m->file == file) {
             return m->metadata_index;
         }
     }
@@ -256,12 +241,11 @@ static int find_file_meta_index(file_meta_info_t *list, const vfs_file_t *file)
 }
 
 static void generate_all_file_metadata(codegen_ctx_t *ctx, const vfs_folder_t *folder,
-                                         file_meta_info_t **list)
-{
-    for (const vfs_file_t *f = folder->files; f; f = f->next) {
-        if (f->metadata) {
+                                       file_meta_info_t **list) {
+    for(const vfs_file_t *f = folder->files; f; f = f->next) {
+        if(f->metadata) {
             file_meta_info_t *info = calloc(1, sizeof(file_meta_info_t));
-            if (info) {
+            if(info) {
                 info->file = f;
                 info->metadata_index = generate_metadata(ctx, f->metadata);
                 info->next = *list;
@@ -270,29 +254,28 @@ static void generate_all_file_metadata(codegen_ctx_t *ctx, const vfs_folder_t *f
         }
     }
 
-    for (const vfs_folder_t *c = folder->children; c; c = c->next) {
+    for(const vfs_folder_t *c = folder->children; c; c = c->next) {
         generate_all_file_metadata(ctx, c, list);
     }
 }
 
 static void generate_files_array(codegen_ctx_t *ctx, const vfs_folder_t *folder,
-                                  folder_info_t *info_list, file_meta_info_t *file_meta_list,
-                                  int *file_idx)
-{
-    if (!folder->files) return;
+                                 folder_info_t *info_list, file_meta_info_t *file_meta_list,
+                                 int *file_idx) {
+    if(!folder->files) return;
 
     folder_info_t *folder_info = find_folder_info(info_list, folder);
-    if (!folder_info) return;
+    if(!folder_info) return;
 
     /* Use path-based name for files array */
     char *dir_sym = make_dir_symbol(ctx->name, folder->path);
-    if (!dir_sym) return;
+    if(!dir_sym) return;
 
     writer_printf(ctx->w, "static const cirf_file_t %s_files[] = {\n", dir_sym);
     free(dir_sym);
     writer_indent(ctx->w);
 
-    for (const vfs_file_t *f = folder->files; f; f = f->next) {
+    for(const vfs_file_t *f = folder->files; f; f = f->next) {
         int meta_idx = find_file_meta_index(file_meta_list, f);
 
         writer_puts(ctx->w, "{\n");
@@ -315,12 +298,12 @@ static void generate_files_array(codegen_ctx_t *ctx, const vfs_folder_t *folder,
 
         /* Parent pointer using path-based name */
         char *parent_sym = make_dir_symbol(ctx->name, folder->path);
-        if (parent_sym) {
+        if(parent_sym) {
             writer_printf(ctx->w, ".parent = &%s,\n", parent_sym);
             free(parent_sym);
         }
 
-        if (meta_idx >= 0) {
+        if(meta_idx >= 0) {
             writer_printf(ctx->w, ".metadata = %s_meta_%d,\n", ctx->name, meta_idx);
             writer_printf(ctx->w, ".metadata_count = %zu\n", vfs_metadata_count(f->metadata));
         } else {
@@ -330,7 +313,7 @@ static void generate_files_array(codegen_ctx_t *ctx, const vfs_folder_t *folder,
 
         writer_dedent(ctx->w);
         writer_puts(ctx->w, "}");
-        if (f->next) {
+        if(f->next) {
             writer_puts(ctx->w, ",");
         }
         writer_newline(ctx->w);
@@ -343,13 +326,13 @@ static void generate_files_array(codegen_ctx_t *ctx, const vfs_folder_t *folder,
 
     /* Generate individual file pointer aliases */
     char *arr_sym = make_dir_symbol(ctx->name, folder->path);
-    if (arr_sym) {
+    if(arr_sym) {
         int file_index = 0;
-        for (const vfs_file_t *f = folder->files; f; f = f->next) {
+        for(const vfs_file_t *f = folder->files; f; f = f->next) {
             char *file_sym = make_file_symbol(ctx->name, f->path);
-            if (file_sym) {
-                writer_printf(ctx->w, "const cirf_file_t * const %s = &%s_files[%d];\n",
-                              file_sym, arr_sym, file_index);
+            if(file_sym) {
+                writer_printf(ctx->w, "const cirf_file_t * const %s = &%s_files[%d];\n", file_sym,
+                              arr_sym, file_index);
                 free(file_sym);
             }
             file_index++;
@@ -360,19 +343,18 @@ static void generate_files_array(codegen_ctx_t *ctx, const vfs_folder_t *folder,
 }
 
 static void generate_folder_struct(codegen_ctx_t *ctx, const vfs_folder_t *folder,
-                                    folder_info_t *info_list)
-{
+                                   folder_info_t *info_list) {
     folder_info_t *info = find_folder_info(info_list, folder);
-    if (!info) return;
+    if(!info) return;
 
     /* Generate metadata if present */
-    if (folder->metadata) {
+    if(folder->metadata) {
         info->metadata_index = generate_metadata(ctx, folder->metadata);
     }
 
     /* Use path-based symbol name */
     char *self_sym = make_dir_symbol(ctx->name, folder->path);
-    if (!self_sym) return;
+    if(!self_sym) return;
 
     writer_printf(ctx->w, "const cirf_folder_t %s = {\n", self_sym);
     free(self_sym);
@@ -387,9 +369,9 @@ static void generate_folder_struct(codegen_ctx_t *ctx, const vfs_folder_t *folde
     writer_puts(ctx->w, ",\n");
 
     /* Parent pointer using path-based name */
-    if (folder->parent) {
+    if(folder->parent) {
         char *parent_sym = make_dir_symbol(ctx->name, folder->parent->path);
-        if (parent_sym) {
+        if(parent_sym) {
             writer_printf(ctx->w, ".parent = &%s,\n", parent_sym);
             free(parent_sym);
         }
@@ -398,9 +380,9 @@ static void generate_folder_struct(codegen_ctx_t *ctx, const vfs_folder_t *folde
     }
 
     /* Children - point to first child using path-based name */
-    if (folder->children) {
+    if(folder->children) {
         char *child_sym = make_dir_symbol(ctx->name, folder->children->path);
-        if (child_sym) {
+        if(child_sym) {
             writer_printf(ctx->w, ".children = &%s,\n", child_sym);
             free(child_sym);
         }
@@ -411,9 +393,9 @@ static void generate_folder_struct(codegen_ctx_t *ctx, const vfs_folder_t *folde
     }
 
     /* Files - use path-based array name */
-    if (info->files_count > 0) {
+    if(info->files_count > 0) {
         char *files_sym = make_dir_symbol(ctx->name, folder->path);
-        if (files_sym) {
+        if(files_sym) {
             writer_printf(ctx->w, ".files = %s_files,\n", files_sym);
             free(files_sym);
         }
@@ -424,7 +406,7 @@ static void generate_folder_struct(codegen_ctx_t *ctx, const vfs_folder_t *folde
     }
 
     /* Metadata */
-    if (info->metadata_index >= 0) {
+    if(info->metadata_index >= 0) {
         writer_printf(ctx->w, ".metadata = %s_meta_%d,\n", ctx->name, info->metadata_index);
         writer_printf(ctx->w, ".metadata_count = %zu\n", vfs_metadata_count(folder->metadata));
     } else {
@@ -437,21 +419,19 @@ static void generate_folder_struct(codegen_ctx_t *ctx, const vfs_folder_t *folde
 }
 
 static void generate_all_files_arrays(codegen_ctx_t *ctx, const vfs_folder_t *folder,
-                                       folder_info_t *info_list, file_meta_info_t *file_meta_list,
-                                       int *file_idx)
-{
+                                      folder_info_t *info_list, file_meta_info_t *file_meta_list,
+                                      int *file_idx) {
     generate_files_array(ctx, folder, info_list, file_meta_list, file_idx);
 
-    for (const vfs_folder_t *c = folder->children; c; c = c->next) {
+    for(const vfs_folder_t *c = folder->children; c; c = c->next) {
         generate_all_files_arrays(ctx, c, info_list, file_meta_list, file_idx);
     }
 }
 
 static void generate_all_folders(codegen_ctx_t *ctx, const vfs_folder_t *folder,
-                                  folder_info_t *info_list)
-{
+                                 folder_info_t *info_list) {
     /* Generate children first (they need to be defined before parent references them) */
-    for (const vfs_folder_t *c = folder->children; c; c = c->next) {
+    for(const vfs_folder_t *c = folder->children; c; c = c->next) {
         generate_all_folders(ctx, c, info_list);
     }
 
@@ -459,13 +439,12 @@ static void generate_all_folders(codegen_ctx_t *ctx, const vfs_folder_t *folder,
     generate_folder_struct(ctx, folder, info_list);
 }
 
-static cirf_error_t generate_header(const cirf_config_t *config, const char *path)
-{
+static cirf_error_t generate_header(const cirf_config_t *config, const char *path) {
     FILE *fp = fopen(path, "w");
-    if (!fp) return CIRF_ERR_IO;
+    if(!fp) return CIRF_ERR_IO;
 
     writer_t *w = writer_create(fp);
-    if (!w) {
+    if(!w) {
         fclose(fp);
         return CIRF_ERR_NOMEM;
     }
@@ -474,7 +453,8 @@ static cirf_error_t generate_header(const cirf_config_t *config, const char *pat
 
     /* Header guard */
     char *guard = make_identifier(name);
-    for (char *p = guard; *p; p++) *p = toupper((unsigned char)*p);
+    for(char *p = guard; *p; p++)
+        *p = toupper((unsigned char)*p);
 
     writer_printf(w, "#ifndef %s_H\n", guard);
     writer_printf(w, "#define %s_H\n\n", guard);
@@ -501,13 +481,12 @@ static cirf_error_t generate_header(const cirf_config_t *config, const char *pat
 }
 
 static cirf_error_t generate_source(const cirf_config_t *config, const char *path,
-                                     const char *header_name)
-{
+                                    const char *header_name) {
     FILE *fp = fopen(path, "w");
-    if (!fp) return CIRF_ERR_IO;
+    if(!fp) return CIRF_ERR_IO;
 
     writer_t *w = writer_create(fp);
-    if (!w) {
+    if(!w) {
         fclose(fp);
         return CIRF_ERR_NOMEM;
     }
@@ -517,25 +496,20 @@ static cirf_error_t generate_source(const cirf_config_t *config, const char *pat
     writer_printf(w, "#include \"%s\"\n\n", header_name);
 
     codegen_ctx_t ctx = {
-        .name = name,
-        .w = w,
-        .file_index = 0,
-        .folder_index = 0,
-        .metadata_index = 0
-    };
+        .name = name, .w = w, .file_index = 0, .folder_index = 0, .metadata_index = 0};
 
     /* Generate all file data arrays */
     generate_all_data(&ctx, config->root);
 
     /* Collect folder info for cross-references */
     folder_info_t *info_list = NULL;
-    int file_idx = 0;
-    int folder_idx = 0;
+    int            file_idx = 0;
+    int            folder_idx = 0;
     collect_folder_info(config->root, &info_list, &file_idx, &folder_idx);
 
     /* Forward declarations for all folders (except root) */
-    for (folder_info_t *info = info_list; info; info = info->next) {
-        if (info->self_index > 0) { /* Skip root */
+    for(folder_info_t *info = info_list; info; info = info->next) {
+        if(info->self_index > 0) { /* Skip root */
             generate_folder_forward_decl(&ctx, info->folder);
         }
     }
@@ -562,21 +536,19 @@ static cirf_error_t generate_source(const cirf_config_t *config, const char *pat
     return CIRF_OK;
 }
 
-cirf_error_t codegen_generate(const cirf_config_t *config,
-                               const codegen_options_t *options)
-{
-    if (!config || !options || !options->source_path || !options->header_path) {
+cirf_error_t codegen_generate(const cirf_config_t *config, const codegen_options_t *options) {
+    if(!config || !options || !options->source_path || !options->header_path) {
         return CIRF_ERR_INVALID;
     }
 
     cirf_error_t err = generate_header(config, options->header_path);
-    if (err != CIRF_OK) {
+    if(err != CIRF_OK) {
         return err;
     }
 
     /* Extract header filename for #include */
     const char *header_name = strrchr(options->header_path, '/');
-    if (header_name) {
+    if(header_name) {
         header_name++;
     } else {
         header_name = options->header_path;

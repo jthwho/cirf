@@ -5,39 +5,35 @@
 #include <string.h>
 
 typedef struct {
-    const char *input;
-    const char *pos;
-    const char *end;
+        const char *input;
+        const char *pos;
+        const char *end;
 } json_parser_t;
 
-static void skip_whitespace(json_parser_t *p)
-{
-    while (p->pos < p->end && isspace((unsigned char)*p->pos)) {
+static void skip_whitespace(json_parser_t *p) {
+    while(p->pos < p->end && isspace((unsigned char)*p->pos)) {
         p->pos++;
     }
 }
 
-static int peek(json_parser_t *p)
-{
+static int peek(json_parser_t *p) {
     skip_whitespace(p);
-    if (p->pos >= p->end) {
+    if(p->pos >= p->end) {
         return -1;
     }
     return (unsigned char)*p->pos;
 }
 
-static int consume(json_parser_t *p)
-{
+static int consume(json_parser_t *p) {
     skip_whitespace(p);
-    if (p->pos >= p->end) {
+    if(p->pos >= p->end) {
         return -1;
     }
     return (unsigned char)*p->pos++;
 }
 
-static int expect(json_parser_t *p, char c)
-{
-    if (consume(p) != c) {
+static int expect(json_parser_t *p, char c) {
+    if(consume(p) != c) {
         return 0;
     }
     return 1;
@@ -45,21 +41,20 @@ static int expect(json_parser_t *p, char c)
 
 static cirf_error_t parse_value(json_parser_t *p, json_value_t **out);
 
-static cirf_error_t parse_string(json_parser_t *p, char **out)
-{
-    if (!expect(p, '"')) {
+static cirf_error_t parse_string(json_parser_t *p, char **out) {
+    if(!expect(p, '"')) {
         return CIRF_ERR_PARSE;
     }
 
     const char *start = p->pos;
-    size_t len = 0;
-    int has_escapes = 0;
+    size_t      len = 0;
+    int         has_escapes = 0;
 
-    while (p->pos < p->end && *p->pos != '"') {
-        if (*p->pos == '\\') {
+    while(p->pos < p->end && *p->pos != '"') {
+        if(*p->pos == '\\') {
             has_escapes = 1;
             p->pos++;
-            if (p->pos >= p->end) {
+            if(p->pos >= p->end) {
                 return CIRF_ERR_PARSE;
             }
         }
@@ -67,38 +62,54 @@ static cirf_error_t parse_string(json_parser_t *p, char **out)
         len++;
     }
 
-    if (p->pos >= p->end) {
+    if(p->pos >= p->end) {
         return CIRF_ERR_PARSE;
     }
 
     char *str = malloc(len + 1);
-    if (!str) {
+    if(!str) {
         return CIRF_ERR_NOMEM;
     }
 
-    if (has_escapes) {
+    if(has_escapes) {
         const char *src = start;
-        char *dst = str;
-        while (src < p->pos) {
-            if (*src == '\\') {
+        char       *dst = str;
+        while(src < p->pos) {
+            if(*src == '\\') {
                 src++;
-                switch (*src) {
-                case 'n': *dst++ = '\n'; break;
-                case 'r': *dst++ = '\r'; break;
-                case 't': *dst++ = '\t'; break;
-                case '\\': *dst++ = '\\'; break;
-                case '"': *dst++ = '"'; break;
-                case '/': *dst++ = '/'; break;
-                case 'b': *dst++ = '\b'; break;
-                case 'f': *dst++ = '\f'; break;
-                case 'u':
-                    /* Simplified: just skip \uXXXX and insert ? */
-                    src += 4;
-                    *dst++ = '?';
-                    break;
-                default:
-                    *dst++ = *src;
-                    break;
+                switch(*src) {
+                    case 'n':
+                        *dst++ = '\n';
+                        break;
+                    case 'r':
+                        *dst++ = '\r';
+                        break;
+                    case 't':
+                        *dst++ = '\t';
+                        break;
+                    case '\\':
+                        *dst++ = '\\';
+                        break;
+                    case '"':
+                        *dst++ = '"';
+                        break;
+                    case '/':
+                        *dst++ = '/';
+                        break;
+                    case 'b':
+                        *dst++ = '\b';
+                        break;
+                    case 'f':
+                        *dst++ = '\f';
+                        break;
+                    case 'u':
+                        /* Simplified: just skip \uXXXX and insert ? */
+                        src += 4;
+                        *dst++ = '?';
+                        break;
+                    default:
+                        *dst++ = *src;
+                        break;
                 }
                 src++;
             } else {
@@ -116,44 +127,43 @@ static cirf_error_t parse_string(json_parser_t *p, char **out)
     return CIRF_OK;
 }
 
-static cirf_error_t parse_number(json_parser_t *p, long *out)
-{
+static cirf_error_t parse_number(json_parser_t *p, long *out) {
     skip_whitespace(p);
 
     const char *start = p->pos;
-    int negative = 0;
+    int         negative = 0;
 
-    if (p->pos < p->end && *p->pos == '-') {
+    if(p->pos < p->end && *p->pos == '-') {
         negative = 1;
         p->pos++;
     }
 
-    if (p->pos >= p->end || !isdigit((unsigned char)*p->pos)) {
+    if(p->pos >= p->end || !isdigit((unsigned char)*p->pos)) {
         p->pos = start;
         return CIRF_ERR_PARSE;
     }
 
     long value = 0;
-    while (p->pos < p->end && isdigit((unsigned char)*p->pos)) {
+    while(p->pos < p->end && isdigit((unsigned char)*p->pos)) {
         value = value * 10 + (*p->pos - '0');
         p->pos++;
     }
 
     /* Skip fractional part if present */
-    if (p->pos < p->end && *p->pos == '.') {
+    if(p->pos < p->end && *p->pos == '.') {
         p->pos++;
-        while (p->pos < p->end && isdigit((unsigned char)*p->pos)) {
+        while(p->pos < p->end && isdigit((unsigned char)*p->pos)) {
             p->pos++;
         }
     }
 
     /* Skip exponent if present */
-    if (p->pos < p->end && (*p->pos == 'e' || *p->pos == 'E')) {
+    if(p->pos < p->end && (*p->pos == 'e' || *p->pos == 'E')) {
         p->pos++;
-        if (p->pos < p->end && (*p->pos == '+' || *p->pos == '-')) {
+        if(p->pos < p->end && (*p->pos == '+' || *p->pos == '-')) {
             p->pos++;
         }
-        while (p->pos < p->end && isdigit((unsigned char)*p->pos)) {
+        while(p->pos < p->end && isdigit((unsigned char)*p->pos)) {
             p->pos++;
         }
     }
@@ -162,9 +172,8 @@ static cirf_error_t parse_number(json_parser_t *p, long *out)
     return CIRF_OK;
 }
 
-static cirf_error_t parse_array(json_parser_t *p, json_value_t *arr)
-{
-    if (!expect(p, '[')) {
+static cirf_error_t parse_array(json_parser_t *p, json_value_t *arr) {
+    if(!expect(p, '[')) {
         return CIRF_ERR_PARSE;
     }
 
@@ -172,25 +181,25 @@ static cirf_error_t parse_array(json_parser_t *p, json_value_t *arr)
     arr->data.array.items = NULL;
     arr->data.array.count = 0;
 
-    if (peek(p) == ']') {
+    if(peek(p) == ']') {
         p->pos++;
         return CIRF_OK;
     }
 
-    size_t capacity = 8;
+    size_t        capacity = 8;
     json_value_t *items = malloc(capacity * sizeof(json_value_t));
-    if (!items) {
+    if(!items) {
         return CIRF_ERR_NOMEM;
     }
 
     cirf_error_t err;
-    size_t count = 0;
+    size_t       count = 0;
 
     do {
-        if (count >= capacity) {
+        if(count >= capacity) {
             capacity *= 2;
             json_value_t *new_items = realloc(items, capacity * sizeof(json_value_t));
-            if (!new_items) {
+            if(!new_items) {
                 free(items);
                 return CIRF_ERR_NOMEM;
             }
@@ -199,7 +208,7 @@ static cirf_error_t parse_array(json_parser_t *p, json_value_t *arr)
 
         json_value_t *item = NULL;
         err = parse_value(p, &item);
-        if (err != CIRF_OK) {
+        if(err != CIRF_OK) {
             free(items);
             return err;
         }
@@ -207,9 +216,9 @@ static cirf_error_t parse_array(json_parser_t *p, json_value_t *arr)
         items[count++] = *item;
         free(item);
 
-    } while (peek(p) == ',' && (p->pos++, 1));
+    } while(peek(p) == ',' && (p->pos++, 1));
 
-    if (!expect(p, ']')) {
+    if(!expect(p, ']')) {
         free(items);
         return CIRF_ERR_PARSE;
     }
@@ -219,9 +228,8 @@ static cirf_error_t parse_array(json_parser_t *p, json_value_t *arr)
     return CIRF_OK;
 }
 
-static cirf_error_t parse_object(json_parser_t *p, json_value_t *obj)
-{
-    if (!expect(p, '{')) {
+static cirf_error_t parse_object(json_parser_t *p, json_value_t *obj) {
+    if(!expect(p, '{')) {
         return CIRF_ERR_PARSE;
     }
 
@@ -230,29 +238,29 @@ static cirf_error_t parse_object(json_parser_t *p, json_value_t *obj)
     obj->data.object.values = NULL;
     obj->data.object.count = 0;
 
-    if (peek(p) == '}') {
+    if(peek(p) == '}') {
         p->pos++;
         return CIRF_OK;
     }
 
-    size_t capacity = 8;
-    char **keys = malloc(capacity * sizeof(char *));
+    size_t        capacity = 8;
+    char        **keys = malloc(capacity * sizeof(char *));
     json_value_t *values = malloc(capacity * sizeof(json_value_t));
-    if (!keys || !values) {
+    if(!keys || !values) {
         free(keys);
         free(values);
         return CIRF_ERR_NOMEM;
     }
 
     cirf_error_t err;
-    size_t count = 0;
+    size_t       count = 0;
 
     do {
-        if (count >= capacity) {
+        if(count >= capacity) {
             size_t new_capacity = capacity * 2;
             char **new_keys = realloc(keys, new_capacity * sizeof(char *));
-            if (!new_keys) {
-                for (size_t i = 0; i < count; i++) {
+            if(!new_keys) {
+                for(size_t i = 0; i < count; i++) {
                     free(keys[i]);
                 }
                 free(keys);
@@ -262,8 +270,8 @@ static cirf_error_t parse_object(json_parser_t *p, json_value_t *obj)
             keys = new_keys;
 
             json_value_t *new_values = realloc(values, new_capacity * sizeof(json_value_t));
-            if (!new_values) {
-                for (size_t i = 0; i < count; i++) {
+            if(!new_values) {
+                for(size_t i = 0; i < count; i++) {
                     free(keys[i]);
                 }
                 free(keys);
@@ -276,8 +284,8 @@ static cirf_error_t parse_object(json_parser_t *p, json_value_t *obj)
 
         char *key = NULL;
         err = parse_string(p, &key);
-        if (err != CIRF_OK) {
-            for (size_t i = 0; i < count; i++) {
+        if(err != CIRF_OK) {
+            for(size_t i = 0; i < count; i++) {
                 free(keys[i]);
             }
             free(keys);
@@ -285,9 +293,9 @@ static cirf_error_t parse_object(json_parser_t *p, json_value_t *obj)
             return err;
         }
 
-        if (!expect(p, ':')) {
+        if(!expect(p, ':')) {
             free(key);
-            for (size_t i = 0; i < count; i++) {
+            for(size_t i = 0; i < count; i++) {
                 free(keys[i]);
             }
             free(keys);
@@ -297,9 +305,9 @@ static cirf_error_t parse_object(json_parser_t *p, json_value_t *obj)
 
         json_value_t *val = NULL;
         err = parse_value(p, &val);
-        if (err != CIRF_OK) {
+        if(err != CIRF_OK) {
             free(key);
-            for (size_t i = 0; i < count; i++) {
+            for(size_t i = 0; i < count; i++) {
                 free(keys[i]);
             }
             free(keys);
@@ -312,10 +320,10 @@ static cirf_error_t parse_object(json_parser_t *p, json_value_t *obj)
         free(val);
         count++;
 
-    } while (peek(p) == ',' && (p->pos++, 1));
+    } while(peek(p) == ',' && (p->pos++, 1));
 
-    if (!expect(p, '}')) {
-        for (size_t i = 0; i < count; i++) {
+    if(!expect(p, '}')) {
+        for(size_t i = 0; i < count; i++) {
             free(keys[i]);
         }
         free(keys);
@@ -329,80 +337,86 @@ static cirf_error_t parse_object(json_parser_t *p, json_value_t *obj)
     return CIRF_OK;
 }
 
-static int match_keyword(json_parser_t *p, const char *keyword)
-{
+static int match_keyword(json_parser_t *p, const char *keyword) {
     skip_whitespace(p);
     size_t len = strlen(keyword);
-    if ((size_t)(p->end - p->pos) >= len && memcmp(p->pos, keyword, len) == 0) {
+    if((size_t)(p->end - p->pos) >= len && memcmp(p->pos, keyword, len) == 0) {
         p->pos += len;
         return 1;
     }
     return 0;
 }
 
-static cirf_error_t parse_value(json_parser_t *p, json_value_t **out)
-{
+static cirf_error_t parse_value(json_parser_t *p, json_value_t **out) {
     json_value_t *val = calloc(1, sizeof(json_value_t));
-    if (!val) {
+    if(!val) {
         return CIRF_ERR_NOMEM;
     }
 
-    int c = peek(p);
+    int          c = peek(p);
     cirf_error_t err = CIRF_OK;
 
-    switch (c) {
-    case '"':
-        val->type = JSON_STRING;
-        err = parse_string(p, &val->data.string);
-        break;
+    switch(c) {
+        case '"':
+            val->type = JSON_STRING;
+            err = parse_string(p, &val->data.string);
+            break;
 
-    case '{':
-        err = parse_object(p, val);
-        break;
+        case '{':
+            err = parse_object(p, val);
+            break;
 
-    case '[':
-        err = parse_array(p, val);
-        break;
+        case '[':
+            err = parse_array(p, val);
+            break;
 
-    case 't':
-        if (match_keyword(p, "true")) {
-            val->type = JSON_BOOL;
-            val->data.boolean = 1;
-        } else {
+        case 't':
+            if(match_keyword(p, "true")) {
+                val->type = JSON_BOOL;
+                val->data.boolean = 1;
+            } else {
+                err = CIRF_ERR_PARSE;
+            }
+            break;
+
+        case 'f':
+            if(match_keyword(p, "false")) {
+                val->type = JSON_BOOL;
+                val->data.boolean = 0;
+            } else {
+                err = CIRF_ERR_PARSE;
+            }
+            break;
+
+        case 'n':
+            if(match_keyword(p, "null")) {
+                val->type = JSON_NULL;
+            } else {
+                err = CIRF_ERR_PARSE;
+            }
+            break;
+
+        case '-':
+        case '0':
+        case '1':
+        case '2':
+        case '3':
+        case '4':
+        case '5':
+        case '6':
+        case '7':
+        case '8':
+        case '9':
+            val->type = JSON_NUMBER;
+            err = parse_number(p, &val->data.number);
+            break;
+
+        default:
             err = CIRF_ERR_PARSE;
-        }
-        break;
-
-    case 'f':
-        if (match_keyword(p, "false")) {
-            val->type = JSON_BOOL;
-            val->data.boolean = 0;
-        } else {
-            err = CIRF_ERR_PARSE;
-        }
-        break;
-
-    case 'n':
-        if (match_keyword(p, "null")) {
-            val->type = JSON_NULL;
-        } else {
-            err = CIRF_ERR_PARSE;
-        }
-        break;
-
-    case '-':
-    case '0': case '1': case '2': case '3': case '4':
-    case '5': case '6': case '7': case '8': case '9':
-        val->type = JSON_NUMBER;
-        err = parse_number(p, &val->data.number);
-        break;
-
-    default:
-        err = CIRF_ERR_PARSE;
-        break;
+            break;
     }
 
-    if (err != CIRF_OK) {
+    if(err != CIRF_OK) {
         free(val);
         return err;
     }
@@ -411,29 +425,23 @@ static cirf_error_t parse_value(json_parser_t *p, json_value_t **out)
     return CIRF_OK;
 }
 
-cirf_error_t json_parse(const char *input, json_value_t **out)
-{
-    if (!input || !out) {
+cirf_error_t json_parse(const char *input, json_value_t **out) {
+    if(!input || !out) {
         return CIRF_ERR_INVALID;
     }
 
-    json_parser_t parser = {
-        .input = input,
-        .pos = input,
-        .end = input + strlen(input)
-    };
+    json_parser_t parser = {.input = input, .pos = input, .end = input + strlen(input)};
 
     return parse_value(&parser, out);
 }
 
-cirf_error_t json_parse_file(const char *path, json_value_t **out)
-{
-    if (!path || !out) {
+cirf_error_t json_parse_file(const char *path, json_value_t **out) {
+    if(!path || !out) {
         return CIRF_ERR_INVALID;
     }
 
     FILE *fp = fopen(path, "rb");
-    if (!fp) {
+    if(!fp) {
         return CIRF_ERR_IO;
     }
 
@@ -441,13 +449,13 @@ cirf_error_t json_parse_file(const char *path, json_value_t **out)
     long size = ftell(fp);
     fseek(fp, 0, SEEK_SET);
 
-    if (size < 0) {
+    if(size < 0) {
         fclose(fp);
         return CIRF_ERR_IO;
     }
 
     char *content = malloc((size_t)size + 1);
-    if (!content) {
+    if(!content) {
         fclose(fp);
         return CIRF_ERR_NOMEM;
     }
@@ -455,7 +463,7 @@ cirf_error_t json_parse_file(const char *path, json_value_t **out)
     size_t read = fread(content, 1, (size_t)size, fp);
     fclose(fp);
 
-    if ((long)read != size) {
+    if((long)read != size) {
         free(content);
         return CIRF_ERR_IO;
     }
@@ -467,51 +475,48 @@ cirf_error_t json_parse_file(const char *path, json_value_t **out)
     return err;
 }
 
-static void json_destroy_value(json_value_t *val)
-{
-    if (!val) return;
+static void json_destroy_value(json_value_t *val) {
+    if(!val) return;
 
-    switch (val->type) {
-    case JSON_STRING:
-        free(val->data.string);
-        break;
+    switch(val->type) {
+        case JSON_STRING:
+            free(val->data.string);
+            break;
 
-    case JSON_ARRAY:
-        for (size_t i = 0; i < val->data.array.count; i++) {
-            json_destroy_value(&val->data.array.items[i]);
-        }
-        free(val->data.array.items);
-        break;
+        case JSON_ARRAY:
+            for(size_t i = 0; i < val->data.array.count; i++) {
+                json_destroy_value(&val->data.array.items[i]);
+            }
+            free(val->data.array.items);
+            break;
 
-    case JSON_OBJECT:
-        for (size_t i = 0; i < val->data.object.count; i++) {
-            free(val->data.object.keys[i]);
-            json_destroy_value(&val->data.object.values[i]);
-        }
-        free(val->data.object.keys);
-        free(val->data.object.values);
-        break;
+        case JSON_OBJECT:
+            for(size_t i = 0; i < val->data.object.count; i++) {
+                free(val->data.object.keys[i]);
+                json_destroy_value(&val->data.object.values[i]);
+            }
+            free(val->data.object.keys);
+            free(val->data.object.values);
+            break;
 
-    default:
-        break;
+        default:
+            break;
     }
 }
 
-void json_destroy(json_value_t *value)
-{
-    if (!value) return;
+void json_destroy(json_value_t *value) {
+    if(!value) return;
     json_destroy_value(value);
     free(value);
 }
 
-json_value_t *json_get(const json_value_t *obj, const char *key)
-{
-    if (!obj || obj->type != JSON_OBJECT || !key) {
+json_value_t *json_get(const json_value_t *obj, const char *key) {
+    if(!obj || obj->type != JSON_OBJECT || !key) {
         return NULL;
     }
 
-    for (size_t i = 0; i < obj->data.object.count; i++) {
-        if (strcmp(obj->data.object.keys[i], key) == 0) {
+    for(size_t i = 0; i < obj->data.object.count; i++) {
+        if(strcmp(obj->data.object.keys[i], key) == 0) {
             return &obj->data.object.values[i];
         }
     }
@@ -519,52 +524,46 @@ json_value_t *json_get(const json_value_t *obj, const char *key)
     return NULL;
 }
 
-json_value_t *json_array_get(const json_value_t *arr, size_t index)
-{
-    if (!arr || arr->type != JSON_ARRAY || index >= arr->data.array.count) {
+json_value_t *json_array_get(const json_value_t *arr, size_t index) {
+    if(!arr || arr->type != JSON_ARRAY || index >= arr->data.array.count) {
         return NULL;
     }
     return &arr->data.array.items[index];
 }
 
-size_t json_array_length(const json_value_t *arr)
-{
-    if (!arr || arr->type != JSON_ARRAY) {
+size_t json_array_length(const json_value_t *arr) {
+    if(!arr || arr->type != JSON_ARRAY) {
         return 0;
     }
     return arr->data.array.count;
 }
 
-size_t json_object_length(const json_value_t *obj)
-{
-    if (!obj || obj->type != JSON_OBJECT) {
+size_t json_object_length(const json_value_t *obj) {
+    if(!obj || obj->type != JSON_OBJECT) {
         return 0;
     }
     return obj->data.object.count;
 }
 
-const char *json_get_string(const json_value_t *obj, const char *key)
-{
+const char *json_get_string(const json_value_t *obj, const char *key) {
     json_value_t *val = json_get(obj, key);
-    if (!val || val->type != JSON_STRING) {
+    if(!val || val->type != JSON_STRING) {
         return NULL;
     }
     return val->data.string;
 }
 
-long json_get_number(const json_value_t *obj, const char *key, long default_val)
-{
+long json_get_number(const json_value_t *obj, const char *key, long default_val) {
     json_value_t *val = json_get(obj, key);
-    if (!val || val->type != JSON_NUMBER) {
+    if(!val || val->type != JSON_NUMBER) {
         return default_val;
     }
     return val->data.number;
 }
 
-int json_get_bool(const json_value_t *obj, const char *key, int default_val)
-{
+int json_get_bool(const json_value_t *obj, const char *key, int default_val) {
     json_value_t *val = json_get(obj, key);
-    if (!val || val->type != JSON_BOOL) {
+    if(!val || val->type != JSON_BOOL) {
         return default_val;
     }
     return val->data.boolean;

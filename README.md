@@ -342,6 +342,31 @@ cirf_add_resources(game_assets
 target_link_libraries(my_app PRIVATE game_assets)
 ```
 
+### Using FetchContent (External Package)
+
+CIRF can be included directly in your project using CMake's FetchContent:
+
+```cmake
+include(FetchContent)
+
+FetchContent_Declare(
+    cirf
+    GIT_REPOSITORY https://github.com/jthwho/cirf.git
+    GIT_TAG        v0.1.0
+)
+FetchContent_MakeAvailable(cirf)
+
+# Use cirf_add_resources as normal
+cirf_add_resources(game_assets
+    CONFIG ${CMAKE_CURRENT_SOURCE_DIR}/resources.json
+    LINK_RUNTIME
+)
+
+target_link_libraries(my_app PRIVATE game_assets)
+```
+
+This approach automatically downloads and builds CIRF as part of your project's configure step, requiring no pre-installation.
+
 ### CMake Function Options
 
 | Option | Description |

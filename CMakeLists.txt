@@ -9,6 +9,9 @@ project(cirf
 set(CMAKE_C_STANDARD 99)
 set(CMAKE_C_STANDARD_REQUIRED ON)
 
+# IDE support: generate compile_commands.json for IDE integration
+set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
+
 option(CIRF_BUILD_EXAMPLES "Build example projects" OFF)
 option(CIRF_BUILD_RUNTIME "Build the optional runtime library" ON)
 option(CIRF_BUILD_GENERATOR "Build the code generator (disable for cross-compilation)" ON)
@@ -83,6 +86,31 @@ if(CIRF_BUILD_RUNTIME)
     endif()
 endif()
 
+# Code formatting target
+find_program(CLANG_FORMAT_EXECUTABLE clang-format)
+if(CLANG_FORMAT_EXECUTABLE)
+    file(GLOB_RECURSE CIRF_FORMAT_SOURCES
+        ${CMAKE_CURRENT_SOURCE_DIR}/src/*.c
+        ${CMAKE_CURRENT_SOURCE_DIR}/include/*.h
+    )
+
+    add_custom_target(format
+        COMMAND ${CLANG_FORMAT_EXECUTABLE} -i ${CIRF_FORMAT_SOURCES}
+        WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
+        COMMENT "Formatting source code with clang-format"
+        VERBATIM
+    )
+
+    add_custom_target(format-check
+        COMMAND ${CLANG_FORMAT_EXECUTABLE} --dry-run --Werror ${CIRF_FORMAT_SOURCES}
+        WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
+        COMMENT "Checking source code formatting with clang-format"
+        VERBATIM
+    )
+else()
+    message(STATUS "clang-format not found - format targets disabled")
+endif()
+
 # Install targets
 include(GNUInstallDirs)
 
@@ -110,7 +138,18 @@ install(DIRECTORY include/cirf
     DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}
 )
 
-install(FILES cmake/CIRFConfig.cmake cmake/CIRFAddResources.cmake
+# Generate version config file
+include(CMakePackageConfigHelpers)
+configure_file(
+    ${CMAKE_CURRENT_SOURCE_DIR}/cmake/CIRFConfigVersion.cmake.in
+    ${CMAKE_CURRENT_BINARY_DIR}/CIRFConfigVersion.cmake
+    @ONLY
+)
+
+install(FILES
+    cmake/CIRFConfig.cmake
+    cmake/CIRFAddResources.cmake
+    ${CMAKE_CURRENT_BINARY_DIR}/CIRFConfigVersion.cmake
     DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/CIRF
 )
 
