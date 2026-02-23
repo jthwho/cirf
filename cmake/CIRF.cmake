@@ -92,6 +92,15 @@ function(_cirf_ensure_host_tool)
     set(_host_build_dir "${CMAKE_BINARY_DIR}/cirf-host-build")
     set(_host_cirf "${_host_build_dir}/cirf")
 
+    # Determine the compiler for the host tool
+    set(_cirf_cc "${CMAKE_C_COMPILER}")
+    if(CMAKE_CROSSCOMPILING)
+        find_program(_host_cc NAMES cc gcc clang)
+        if(_host_cc)
+            set(_cirf_cc "${_host_cc}")
+        endif()
+    endif()
+
     # Use ExternalProject to build cirf with host compiler
     ExternalProject_Add(cirf_host_tool
         SOURCE_DIR "${_cirf_src}"
@@ -100,36 +109,13 @@ function(_cirf_ensure_host_tool)
             -DCMAKE_BUILD_TYPE=Release
             -DCIRF_BUILD_RUNTIME=OFF
             -DCIRF_BUILD_EXAMPLES=OFF
-            # Use host compiler (unset cross-compilation settings)
-            -DCMAKE_C_COMPILER=${CMAKE_C_COMPILER}
+            -DCMAKE_C_COMPILER=${_cirf_cc}
             -DCMAKE_TOOLCHAIN_FILE=
         BUILD_COMMAND ${CMAKE_COMMAND} --build . --target cirf
         INSTALL_COMMAND ""
         BUILD_BYPRODUCTS "${_host_cirf}"
         EXCLUDE_FROM_ALL TRUE
     )
-
-    # For non-cross-compiling builds, we can use the same compiler
-    # For cross-compiling, we need to find the host compiler
-    if(CMAKE_CROSSCOMPILING)
-        # Try to find host C compiler
-        find_program(_host_cc NAMES cc gcc clang)
-        if(_host_cc)
-            ExternalProject_Add(cirf_host_tool
-                SOURCE_DIR "${_cirf_src}"
-                BINARY_DIR "${_host_build_dir}"
-                CMAKE_ARGS
-                    -DCMAKE_BUILD_TYPE=Release
-                    -DCIRF_BUILD_RUNTIME=OFF
-                    -DCIRF_BUILD_EXAMPLES=OFF
-                    -DCMAKE_C_COMPILER=${_host_cc}
-                BUILD_COMMAND ${CMAKE_COMMAND} --build . --target cirf
-                INSTALL_COMMAND ""
-                BUILD_BYPRODUCTS "${_host_cirf}"
-                EXCLUDE_FROM_ALL TRUE
-            )
-        endif()
-    endif()
 
     set(CIRF_EXECUTABLE "${_host_cirf}" PARENT_SCOPE)
     set(CIRF_HOST_TOOL_TARGET "cirf_host_tool" PARENT_SCOPE)
