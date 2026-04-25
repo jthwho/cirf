@@ -49,7 +49,7 @@ struct cirf_folder {
         const char            *name;        /* Folder name only (e.g., "images") */
         const char            *path;        /* Full virtual path (e.g., "assets/images") */
         const cirf_folder_t   *parent;      /* Parent folder (NULL for root) */
-        const cirf_folder_t   *children;    /* First child folder (array) */
+        const cirf_folder_t * const *children;  /* Array of child-folder pointers */
         size_t                 child_count; /* Number of child folders */
         const cirf_file_t     *files;       /* Files in this folder (array) */
         size_t                 file_count;  /* Number of files */

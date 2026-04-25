@@ -356,6 +356,40 @@ static void generate_folder_struct(codegen_ctx_t *ctx, const vfs_folder_t *folde
     char *self_sym = make_dir_symbol(ctx->name, folder->path);
     if(!self_sym) return;
 
+    /* Children are referenced through a flat array of pointers so the
+     * runtime can index them directly.  Each child folder is its own
+     * top-level static, and the linker provides no guarantee that
+     * separately-declared statics are laid out contiguously — relying
+     * on pointer arithmetic from `&first_child` to walk siblings is
+     * undefined behaviour and produced a real crash with multiple
+     * top-level resource folders.  Emit the indirection array first
+     * so the folder struct can refer to it. */
+    char *children_arr_sym = NULL;
+    if(folder->children) {
+        char *base = make_dir_symbol(ctx->name, folder->path);
+        if(base) {
+            size_t bsz = strlen(base) + strlen("_children") + 1;
+            children_arr_sym = (char *)malloc(bsz);
+            if(children_arr_sym) {
+                snprintf(children_arr_sym, bsz, "%s_children", base);
+                writer_printf(ctx->w,
+                    "static const cirf_folder_t * const %s[] = {\n",
+                    children_arr_sym);
+                writer_indent(ctx->w);
+                for(const vfs_folder_t *c = folder->children; c; c = c->next) {
+                    char *cs = make_dir_symbol(ctx->name, c->path);
+                    if(cs) {
+                        writer_printf(ctx->w, "&%s,\n", cs);
+                        free(cs);
+                    }
+                }
+                writer_dedent(ctx->w);
+                writer_puts(ctx->w, "};\n\n");
+            }
+            free(base);
+        }
+    }
+
     writer_printf(ctx->w, "const cirf_folder_t %s = {\n", self_sym);
     free(self_sym);
     writer_indent(ctx->w);
@@ -379,14 +413,11 @@ static void generate_folder_struct(codegen_ctx_t *ctx, const vfs_folder_t *folde
         writer_puts(ctx->w, ".parent = NULL,\n");
     }
 
-    /* Children - point to first child using path-based name */
-    if(folder->children) {
-        char *child_sym = make_dir_symbol(ctx->name, folder->children->path);
-        if(child_sym) {
-            writer_printf(ctx->w, ".children = &%s,\n", child_sym);
-            free(child_sym);
-        }
+    /* Children pointer-array reference. */
+    if(children_arr_sym) {
+        writer_printf(ctx->w, ".children = %s,\n", children_arr_sym);
         writer_printf(ctx->w, ".child_count = %d,\n", info->children_count);
+        free(children_arr_sym);
     } else {
         writer_puts(ctx->w, ".children = NULL,\n");
         writer_puts(ctx->w, ".child_count = 0,\n");

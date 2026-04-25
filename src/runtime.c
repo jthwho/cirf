@@ -82,9 +82,9 @@ const cirf_folder_t *cirf_find_folder(const cirf_folder_t *root, const char *pat
         /* Search for matching child */
         const cirf_folder_t *found = NULL;
         for(size_t i = 0; i < current->child_count; i++) {
-            const char *name = current->children[i].name;
+            const char *name = current->children[i]->name;
             if(strlen(name) == len && memcmp(name, p, len) == 0) {
-                found = &current->children[i];
+                found = current->children[i];
                 break;
             }
         }
@@ -141,7 +141,7 @@ void cirf_foreach_file_recursive(const cirf_folder_t *folder, cirf_file_callback
         callback(&folder->files[i], ctx);
     }
     for(size_t i = 0; i < folder->child_count; i++) {
-        cirf_foreach_file_recursive(&folder->children[i], callback, ctx);
+        cirf_foreach_file_recursive(folder->children[i], callback, ctx);
     }
 }
 
@@ -149,7 +149,7 @@ size_t cirf_count_files(const cirf_folder_t *folder) {
     if(!folder) return 0;
     size_t count = folder->file_count;
     for(size_t i = 0; i < folder->child_count; i++) {
-        count += cirf_count_files(&folder->children[i]);
+        count += cirf_count_files(folder->children[i]);
     }
     return count;
 }
@@ -158,7 +158,7 @@ size_t cirf_count_folders(const cirf_folder_t *folder) {
     if(!folder) return 0;
     size_t count = folder->child_count;
     for(size_t i = 0; i < folder->child_count; i++) {
-        count += cirf_count_folders(&folder->children[i]);
+        count += cirf_count_folders(folder->children[i]);
     }
     return count;
 }
