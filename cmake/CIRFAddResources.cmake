@@ -30,6 +30,14 @@
 #   2. Set CIRF_EXECUTABLE to the path of the host-built cirf
 #   3. Set the CIRF_HOST_EXECUTABLE cache variable before calling this function
 #
+#   When the host cirf is produced by another target in the same build (e.g.
+#   an ExternalProject_Add that builds it with the host toolchain), also set
+#   the CIRF_HOST_TARGET cache variable to that target's name.  The generated
+#   resource libraries then take an explicit target-level dependency on it, so
+#   the host cirf is fully built before any resource is generated — robust
+#   across generators (Make/Ninja) and add_subdirectory() boundaries, which a
+#   bare executable path cannot guarantee on its own.
+#
 # Example (without runtime - direct access only):
 #   cirf_add_resources(game_assets
 #       CONFIG ${CMAKE_CURRENT_SOURCE_DIR}/assets.json
@@ -52,8 +60,9 @@
 #       LINK_RUNTIME
 #   )
 
-# Cache variable for cross-compilation - set before including this file
+# Cache variables for cross-compilation - set before including this file
 set(CIRF_HOST_EXECUTABLE "" CACHE FILEPATH "Path to host-built cirf executable (for cross-compilation)")
+set(CIRF_HOST_TARGET "" CACHE STRING "Name of the target that builds the host cirf executable; resource libraries depend on it so generation is ordered after it (cross-compilation)")
 
 function(cirf_add_resources name)
     cmake_parse_arguments(ARG "LINK_RUNTIME" "CONFIG;OUTPUT_DIR;CIRF_EXECUTABLE" "" ${ARGN})
@@ -82,7 +91,11 @@ function(cirf_add_resources name)
         set(CIRF_DEPENDS "")
     elseif(CIRF_HOST_EXECUTABLE)
         set(CIRF_EXECUTABLE ${CIRF_HOST_EXECUTABLE})
-        set(CIRF_DEPENDS "")
+        # Depend on the executable file itself so resources regenerate if the
+        # host cirf is rebuilt.  Target-level build ordering (so the host cirf
+        # exists before this command first runs) is wired below via
+        # CIRF_HOST_TARGET — a bare file path is not enough on its own.
+        set(CIRF_DEPENDS ${CIRF_HOST_EXECUTABLE})
     elseif(TARGET cirf)
         set(CIRF_EXECUTABLE $<TARGET_FILE:cirf>)
         set(CIRF_DEPENDS cirf)
@@ -132,6 +145,17 @@ function(cirf_add_resources name)
     )
 
     add_library(${name} STATIC ${OUTPUT_C})
+
+    # Cross-compilation ordering: when the cirf generator is built by a
+    # separate (host) target, the custom command above invokes it through a
+    # plain file path, which gives CMake no target-level graph edge.  Depend
+    # on that target explicitly so the host cirf is fully built before this
+    # resource library (and therefore its generate step) is built.  Robust
+    # across generators and across add_subdirectory() boundaries.
+    if(CIRF_HOST_TARGET AND TARGET ${CIRF_HOST_TARGET})
+        add_dependencies(${name} ${CIRF_HOST_TARGET})
+    endif()
+
     target_include_directories(${name} PUBLIC ${ARG_OUTPUT_DIR})
 
     # Need CIRF include directory for <cirf/types.h>
